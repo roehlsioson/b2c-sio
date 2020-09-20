@@ -1,9 +1,4 @@
-# b2c-sift
-A "sign-in flow through" custom policy for Azure B2C, eliminating the need for sign-ups and the management of local identities.
-
-# Walkthrough: Add REST API claims exchanges to custom policies in Azure Active Directory B2C
-
-[!INCLUDE [active-directory-b2c-advanced-audience-warning](../../includes/active-directory-b2c-advanced-audience-warning.md)]
+# Walkthrough: Add a sign-in flow through custom policy in Azure Active Directory B2C
 
 Azure Active Directory B2C (Azure AD B2C) enables identity developers to integrate an interaction with a RESTful API in a user journey. At the end of this walkthrough, you'll be able to create an Azure AD B2C user journey that interacts with [RESTful services](custom-policy-rest-api-intro.md).
 
