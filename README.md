@@ -1,5 +1,114 @@
 # Walkthrough: Add a sign-in flow through custom policy in Azure Active Directory B2C
 
+Azure Active Directory B2C (Azure AD B2C) provides business-to-customer identity as a service.  
+
+## Prerequisites
+
+- Complete the steps in [Get started with custom policies](custom-policy-get-started.md). You should have a working custom policy for sign-up and sign-in with local accounts.
+- Learn how to [Integrate REST API claims exchanges in your Azure AD B2C custom policy](custom-policy-rest-api-intro.md).
+
+## Add a claims transformation
+
+```xml
+<ClaimsTransformation Id="CreateObjectId" TransformationMethod="CreateAlternativeSecurityId">
+  <InputClaims>
+    <InputClaim ClaimTypeReferenceId="issuerUserId" TransformationClaimType="key" />
+    <InputClaim ClaimTypeReferenceId="identityProvider" TransformationClaimType="identityProvider" />
+  </InputClaims>
+  <OutputClaims>
+    <OutputClaim ClaimTypeReferenceId="objectId" TransformationClaimType="alternativeSecurityId" />
+  </OutputClaims>
+</ClaimsTransformation>
+```
+
+## Modify your claims provider
+
+```xml
+<OutputClaimsTransformations>
+  <OutputClaimsTransformation ReferenceId="CreateObjectId" />
+</OutputClaimsTransformations>
+```
+
+## Add a new user journey
+
+```xml
+<UserJourney Id="SignInFlowThrough">
+
+  <OrchestrationSteps>
+
+    <OrchestrationStep Order="1" Type="ClaimsProviderSelection" ContentDefinitionReferenceId="api.idpselections">
+      <ClaimsProviderSelections>
+        <ClaimsProviderSelection TargetClaimsExchangeId="FacebookExchange" />
+      </ClaimsProviderSelections>
+    </OrchestrationStep>
+
+    <OrchestrationStep Order="2" Type="ClaimsExchange">
+      <ClaimsExchanges>
+        <ClaimsExchange Id="FacebookExchange" TechnicalProfileReferenceId="Facebook-OAUTH" />
+      </ClaimsExchanges>
+    </OrchestrationStep>
+
+    <OrchestrationStep Order="3" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+
+  </OrchestrationSteps>
+
+  <ClientDefinition ReferenceId="DefaultWeb" />
+
+</UserJourney>
+```
+
+## Modify your relying party policy
+
+```xml
+<DefaultUserJourney ReferenceId="SignInFlowThrough" />
+```
+
+## Test the custom policy
+
+1. Sign in to the [Azure portal](https://portal.azure.com).
+1. Make sure you're using the directory that contains your Azure AD tenant by selecting the **Directory + subscription** filter in the top menu and choosing the directory that contains your Azure AD tenant.
+1. Choose **All services** in the top-left corner of the Azure portal, and then search for and select **App registrations**.
+1. Select **Identity Experience Framework**.
+1. Select **Upload Custom Policy**, and then upload the policy files that you changed: *TrustFrameworkBase.xml*, and *TrustFrameworkExtensions.xml*, *SignUpOrSignin.xml*, *ProfileEdit.xml*, and *PasswordReset.xml*. 
+1. Select the sign-up or sign-in policy that you uploaded, and click the **Run now** button.
+1. You should be able to sign up using an email address or a Facebook account.
+1. The token sent back to your application includes the `balance` claim.
+
+```json
+{
+  "typ": "JWT",
+  "alg": "RS256",
+  "kid": "X5eXk4xyojNFum1kl2Ytv8dlNP4-c57dO6QGTVBwaNk"
+}.{
+  "exp": 1584961516,
+  "nbf": 1584957916,
+  "ver": "1.0",
+  "iss": "https://contoso.b2clogin.com/f06c2fe8-709f-4030-85dc-38a4bfd9e82d/v2.0/",
+  "aud": "e1d2612f-c2bc-4599-8e7b-d874eaca1ee1",
+  "acr": "b2c_1a_signup_signin",
+  "nonce": "defaultNonce",
+  "iat": 1584957916,
+  "auth_time": 1584957916,
+  "name": "Emily Smith",
+  "email": "emily@outlook.com",
+  "given_name": "Emily",
+  "family_name": "Smith",
+  "balance": "202.75"
+  ...
+}
+```
+
+## Next steps
+
+To learn how to secure your APIs, see the following articles:
+
+- [Walkthrough: Integrate REST API claims exchanges in your Azure AD B2C user journey as an orchestration step](custom-policy-rest-api-claims-exchange.md)
+- [Secure your RESTful API](secure-rest-api.md)
+- [Reference: RESTful technical profile](restful-technical-profile.md)
+
+
+
+
 Azure Active Directory B2C (Azure AD B2C) enables identity developers to integrate an interaction with a RESTful API in a user journey. At the end of this walkthrough, you'll be able to create an Azure AD B2C user journey that interacts with [RESTful services](custom-policy-rest-api-intro.md).
 
 In this scenario, we enrich the user's token data by integrating with a corporate line-of-business workflow. During sign-up or sign-in with local or federated account, Azure AD B2C invokes a REST API to get the user's extended profile data from a remote data source. In this sample, Azure AD B2C sends the user's unique identifier, the objectId. The REST API then returns the user's account balance (a random number). Use this sample as a starting point to integrate with your own CRM system, marketing database, or any line-of-business workflow.
