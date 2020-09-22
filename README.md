@@ -6,35 +6,38 @@ Azure Active Directory B2B and B2C both build on the ADFS experience by easily f
 
 Azure AD B2B and B2C each require a shadow account for each user in their respective directories in order to fulfill the identity governance functions. Conversely, ADFS does not provide the identity governance functions, and does not need such shadow accounts. In all cases, a pre-configured technical trust needs to be established. But in terms of the default user experience, a B2B or B2C user needs to "sign-up" in order to successfully get access to services. ADFS on the other hand, does not force a "sign-up".
 
-In this Azure AD B2C scenario, identity information is collected from the identity provider and passed on to the relying party without the need for the user to sign-up. As a result, Azure AD B2C does not persist any user information locally in its own directory, similar to ADFS.  While this eliminates the need to manage any local identities, it also prevents you from leveraging any identity governance capabilities of Azure AD B2C, meaning that identity governance must be implemented at the identity providers and/or the relying parties, all of which should be negotiated in advance of your implementation. Because data flows through your Azure AD B2C instance, you may be held accountable for any breaches or identity issues.
+In this Azure AD B2C scenario, identity information is collected from the identity provider and passed on to the relying party without the need for the user to sign-up. As a result, Azure AD B2C does not persist any user information locally in its own directory, similar to ADFS.  While this eliminates the need to manage any local identities, it also prevents you from leveraging any identity governance capabilities of Azure AD B2C, meaning that identity governance must be implemented at the identity providers and/or the relying parties and/or in a custom REST API, all of which should be negotiated in advance of your implementation. Because data flows through your Azure AD B2C instance, you may be held accountable for any breaches or identity issues.
+
+A sign-in-only custom policy has a very limited scope of purpose, where 
+- Azure AD B2C itself does not provide any function not already provided by the identity providers and/or relying parties, and 
+- you want to simplify home realm discovery for your relying parties and/or you need to inject a process in the authentication flow (via [REST API](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-rest-api-intro) e.g. such as external identity validation not done by the identity provider, or an authorization lookup to augment claims).
 
 This sample federates Azure AD B2C with the Facebook identity provider. When a user signs in, Facebook claims are transformed into B2C claims, which are then sent to the relying party, all without the creation of a user identity in the B2C directory. While Facebook is used in the example, this policy can be adapted to work with any claims provider.
 
 ## Prerequisites
 
-- Complete the steps in [Get started with custom policies](custom-policy-get-started.md). You should have a working custom policy for sign-up and sign-in with local accounts.
-- Learn how to [Integrate REST API claims exchanges in your Azure AD B2C custom policy](custom-policy-rest-api-intro.md).
+- Understand how the custom policy inheritance model works in [TrustFrameworkPolicy](https://docs.microsoft.com/en-us/azure/active-directory-b2c/trustframeworkpolicy)
+- Complete the steps in [Get started with custom policies](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started). 
 
-## Prepare your environment
+## Review the existing configuration
 
-Ensure that you have a working set of policy files, including a claims provider and relying party.
+You should have a working custom policy for sign-up and sign-in with non-local accounts (an external identity provider such as Facebook). The following steps illustrate how Azure AD B2C creates a local user account for each external identity on sign-up.
 
 1. Sign in to the [Azure portal](https://portal.azure.com).
 1. Make sure you're using the directory that contains your Azure AD tenant by selecting the **Directory + subscription** filter in the top menu and choosing the directory that contains your Azure AD tenant.
 1. Choose **All services** in the top-left corner of the Azure portal, and then search for and select **App registrations**.
 1. Select **Identity Experience Framework**.
-1. Select the existing sign-in policy and click the **Run now** button.
-1. Verify that you can sign-in using an external IdP.
+1. Select the existing sign-up (or sign-up/sign-in) policy and click the **Run now** button.
+1. Verify that you can sign-in using an external IdP. If you have not previously signed-up, B2C will tell you that you need to sign-up before you can sign-in.
 1. When sign-in is complete, verify that the user you signed in with now exists as an entity in the B2C directory by selecting **Users** under the **Manage** menu of **Identity Experience Framework**.
-1. Backup your original policy files *TrustFrameworkExtensions.xml* and *SignUpOrSignIn.xml*.
 
 ## Add a claims transformation
 
-As part of a sign-up flow, Azure AD B2C will automatically generate a random unique immutable object identifier (ObjectId) when it creates a new entity in its user directory. This ObjectId is created once and persisted, and reused whenever the user signs in for any downstream processes or claims that depend on a unique user key. For example, for OIDC relying parties, this ObjectId is typically used as the subject ("sub") claim. Because the sign-in flow through custom policy does not include a sign-up - and therefore doesn't auto-generate this identifier - an ObjectId property needs to be explicitly created. 
+As part of a sign-up flow, Azure AD B2C will automatically generate a random unique immutable object identifier (ObjectId) when it creates a new entity in its user directory. This ObjectId is created once and persisted, and reused whenever the user signs in for any downstream processes or claims that depend on a unique user key. For example, for OIDC relying parties, this ObjectId is typically used as the subject ("sub") claim. Because the sign-in flow through custom policy does not include a sign-up - and therefore doesn't auto-generate this identifier - an ObjectId property needs to be explicitly created to ensure that downstream processes are not negatively affected.
 
 Creating a substitute ObjectId with a new GUID will not work. Since the value is not persisted in the B2C directory, a new GUID will be created on each sign-in, violating the immutable requirement. Instead, a unique and immutable identifier needs to be calculated from incoming claims. Further, that calculated value must be unique, and each constituent claim needs to be immutable to ensure the output value is also immutable.
 
-In this example, the CreateAlternativeSecurityId claims transformation is used to calculate a new ObjectId, and includes the user identifier as provided by the IdP, and an IdP identifier. In combination, this should provide a unique value. Immutability is dependent on guarantees made by the IdP that the user identifier it provides is also immutable.
+In this example, the **CreateAlternativeSecurityId** claims transformation is used to calculate a new ObjectId, which includes the user identifier as provided by the IdP, and an IdP identifier. In combination, this should provide a unique value. Immutability is dependent on guarantees made by the IdP that the user identifier it provides is also immutable. This should be verified with each IdP you work with. Make this change to your *TrustFrameworkExtensions.xml* file.
 
 ```xml
 <ClaimsTransformation Id="CreateObjectId" TransformationMethod="CreateAlternativeSecurityId">
@@ -50,13 +53,7 @@ In this example, the CreateAlternativeSecurityId claims transformation is used t
 
 ## Create a claims transformation claims provider
 
-If you already have a generalized utility claims provider for claims transformation, include the following **OutputClaimsTransformation** in the relevant technical profile of that claims provider. This will provide the ability to trigger the **CreateObjectId** claims transformation. 
-
-```xml
-<OutputClaimsTransformation ReferenceId="CreateObjectId" />
-```
-
-If you don't already have a utility claims provider, make one using the following declaration.
+If you already have a generalized claims provider for claims transformation, include a new **B2CUtil-CreateObjectId** technical profile in that claims provider as shown in the following example. Otherwise, create a new claims provider. This will provide the ability to trigger the **CreateObjectId** claims transformation. Make this change to your *TrustFrameworkExtensions.xml* file.
 
 ```xml
 <ClaimsProvider>
@@ -78,7 +75,7 @@ If you don't already have a utility claims provider, make one using the followin
 
 ## Add a new user journey
 
-The default user journey reads and writes to AAD, pulling data and creating user accounts in the directory. Create a new **SignInOnly** user journey that uses the **B2CUtil-CreateObjectId** technical profile. This example uses Facebook as the identity provider, but any number of claim providers can be configured for step 1 and step 2.
+The default user journey reads and writes to AAD, pulling data and creating user accounts in the directory. Create a new **SignInOnly** user journey that uses the **B2CUtil-CreateObjectId** technical profile after the claims exchange with your identity providers. This example uses Facebook as the identity provider, but any number of claim providers can be configured for step 1 and step 2. Make this change to your *TrustFrameworkExtensions.xml* file.
 
 ```xml
 <UserJourney Id="SignInOnly">
@@ -114,13 +111,13 @@ The default user journey reads and writes to AAD, pulling data and creating user
 
 ## Modify your relying party policy
 
-Edit your relying party XML file, changing the **ReferenceId** of **DefaultUserJourney** to **SignInOnly**, which is the name of the new user journey created in the previous step.
+Create a new relying party XML file and name it *SignInOnly.xml*. You can use the *SignUpOrSignIn.xml* file from the *SocialAccounts* folder of the [Custom Policy Starter Pack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack) as a template (be sure to update the **TenantId**, **PolicyId**, **PublicPolicyUri**, and the **TenantId** and **PolicyId** of the **BasePolicy**). Change the **ReferenceId** of **DefaultUserJourney** to **SignInOnly**, which is the name of the new user journey created in the previous step.
 
 ```xml
 <DefaultUserJourney ReferenceId="SignInOnly" />
 ```
 
-The following is an example of a relying party policy using the **SignInFlowThrough** user journey.
+The following is an example of an OIDC relying party policy using the **SignInOnly** user journey.
 
 ```xml
 <RelyingParty>
@@ -148,39 +145,7 @@ The following is an example of a relying party policy using the **SignInFlowThro
 1. Make sure you're using the directory that contains your Azure AD tenant by selecting the **Directory + subscription** filter in the top menu and choosing the directory that contains your Azure AD tenant.
 1. Choose **All services** in the top-left corner of the Azure portal, and then search for and select **App registrations**.
 1. Select **Identity Experience Framework**.
-1. Select **Upload Custom Policy**, and then upload the policy files that you changed: *TrustFrameworkBase.xml*, and *TrustFrameworkExtensions.xml*, *SignUpOrSignin.xml*, *ProfileEdit.xml*, and *PasswordReset.xml*. 
-1. Select the sign-up or sign-in policy that you uploaded, and click the **Run now** button.
-1. You should be able to sign up using an email address or a Facebook account.
-1. The token sent back to your application includes the `balance` claim.
-
-```json
-{
-  "typ": "JWT",
-  "alg": "RS256",
-  "kid": "X5eXk4xyojNFum1kl2Ytv8dlNP4-c57dO6QGTVBwaNk"
-}.{
-  "exp": 1584961516,
-  "nbf": 1584957916,
-  "ver": "1.0",
-  "iss": "https://contoso.b2clogin.com/f06c2fe8-709f-4030-85dc-38a4bfd9e82d/v2.0/",
-  "aud": "e1d2612f-c2bc-4599-8e7b-d874eaca1ee1",
-  "acr": "b2c_1a_signup_signin",
-  "nonce": "defaultNonce",
-  "iat": 1584957916,
-  "auth_time": 1584957916,
-  "name": "Emily Smith",
-  "email": "emily@outlook.com",
-  "given_name": "Emily",
-  "family_name": "Smith",
-  "balance": "202.75"
-  ...
-}
-```
-
-## Next steps
-
-To learn how to secure your APIs, see the following articles:
-
-- [Walkthrough: Integrate REST API claims exchanges in your Azure AD B2C user journey as an orchestration step](custom-policy-rest-api-claims-exchange.md)
-- [Secure your RESTful API](secure-rest-api.md)
-- [Reference: RESTful technical profile](restful-technical-profile.md)
+1. Select **Upload Custom Policy**, and then upload the policy files that you changed: *TrustFrameworkExtensions.xml* and *SignInOnly.xml*. 
+1. Select the sign-in policy that you uploaded, and click the **Run now** button.
+1. Verify that you can sign-in using an external IdP.
+1. When sign-in is complete, verify that the user you signed in with **does not exist** in the B2C directory by selecting **Users** under the **Manage** menu of **Identity Experience Framework**.
