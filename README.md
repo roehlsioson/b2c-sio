@@ -97,7 +97,7 @@ The default user journey reads and writes to AAD, pulling data and creating user
 
     <OrchestrationStep Order="3" Type="ClaimsExchange">
       <ClaimsExchanges>
-      <ClaimsExchange Id="SignInFlowThroughExchange" TechnicalProfileReferenceId="B2CUtility-CreateObjectId" />
+        <ClaimsExchange Id="SignInOnlyExchange" TechnicalProfileReferenceId="B2CUtil-CreateObjectId" />
       </ClaimsExchanges>
     </OrchestrationStep>
     
@@ -109,6 +109,10 @@ The default user journey reads and writes to AAD, pulling data and creating user
 
 </UserJourney>
 ```
+
+If you are updating an existing user journey, you will need to:
+1. Update your user journey to eliminate any reads and writes to AAD. Assess why those reads or writes are being done and determine how to best address them. It is possible that you will be unable to use a sign-in-only flow because of some downstream requirement for AAD information. This constraint was identified at the beginning of this article.
+1. Inject the orchestration step where **ClaimsExchange/@Id** = **SignInOnlyExchange** into your user journey just before you send claims back to the client.
 
 ## Modify your relying party policy
 
