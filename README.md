@@ -1,10 +1,11 @@
-# Walkthrough: Add a sign-in flow through custom policy in Azure Active Directory B2C
+# Walkthrough: Add a sign-in-only custom policy in Azure Active Directory B2C
 
-Azure Active Directory B2C (Azure AD B2C) provides business-to-customer identity as a service.  
+Active Directory Federation Services (ADFS) is an on-premise solution for providing identity federation across 
+Need to pull authorization data?
 
-In this scenario, we enrich the user's token data by integrating with a corporate line-of-business workflow. During sign-up or sign-in with local or federated account, Azure AD B2C invokes a REST API to get the user's extended profile data from a remote data source. In this sample, Azure AD B2C sends the user's unique identifier, the objectId. The REST API then returns the user's account balance (a random number). Use this sample as a starting point to integrate with your own CRM system, marketing database, or any line-of-business workflow.
+In this scenario, all identity information is collected from the identity provider and passed on to the relying party without the need for the user to sign-up. As a result, Azure AD B2C does not persist any user information locally in its own directory.  While this eliminates the need to manage any local identities, it also prevents you from leveraging any identity governance capabilities of Azure AD B2C, meaning that identity governance must be implemented at the identity providers and/or the relying parties, all of which should be negotiated in advance of your implementation.
 
-This walkthrough uses Facebook as an example claims provider, but can be adapted to work with any claims provider.
+In this sample, Azure AD B2C is federated with the Facebook identity provider. When a user signs in, Facebook claims are transformed into B2C claims, which are then sent to the relying party, all without the creation of a user identity in the B2C directory. While Facebook is used in the example, the policy can be adapted to work with any claims provider.
 
 ## Prerequisites
 
