@@ -4,22 +4,17 @@
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
   PolicySchemaVersion="0.3.0.0"
-  TenantId="archb2cpoc.onmicrosoft.com"
-  PolicyId="B2C_1A_signin_sift"
-  PublicPolicyUri="http://archb2cpoc.onmicrosoft.com/B2C_1A_signin_sift"
-  DeploymentMode="Development"
-  UserJourneyRecorderEndpoint="urn:journeyrecorder:applicationinsights">
+  TenantId="yourtenant.onmicrosoft.com"
+  PolicyId="B2C_1A_signinonly"
+  PublicPolicyUri="http://yourtenant.onmicrosoft.com/B2C_1A_signinonly">
 
   <BasePolicy>
-    <TenantId>archb2cpoc.onmicrosoft.com</TenantId>
-    <PolicyId>B2C_1A_TrustFrameworkExtensions_sift</PolicyId>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkExtensions</PolicyId>
   </BasePolicy>
 
   <RelyingParty>
-    <DefaultUserJourney ReferenceId="SignInFlowThrough" />
-	<UserJourneyBehaviors>
-		<JourneyInsights TelemetryEngine="ApplicationInsights" InstrumentationKey="89d52897-d6f1-4d52-a603-57909d668ed3" DeveloperMode="true" ClientEnabled="false" ServerEnabled="true" TelemetryVersion="1.0.0" />
-	</UserJourneyBehaviors>
+    <DefaultUserJourney ReferenceId="SignInOnly" />
     <TechnicalProfile Id="PolicyProfile">
       <DisplayName>PolicyProfile</DisplayName>
       <Protocol Name="OpenIdConnect" />
