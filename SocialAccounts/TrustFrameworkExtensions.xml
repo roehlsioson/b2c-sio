@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<TrustFrameworkPolicy 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06" 
+  PolicySchemaVersion="0.3.0.0" 
+  TenantId="yourtenant.onmicrosoft.com" 
+  PolicyId="B2C_1A_TrustFrameworkExtensions" 
+  PublicPolicyUri="http://yourtenant.onmicrosoft.com/B2C_1A_TrustFrameworkExtensions">
+  
+  <BasePolicy>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkBase</PolicyId>
+  </BasePolicy>
+  
+  <BuildingBlocks>
+
+    <ClaimsTransformations>
+
+      <ClaimsTransformation Id="CreateObjectId" TransformationMethod="CreateAlternativeSecurityId">
+        <InputClaims>
+          <InputClaim ClaimTypeReferenceId="issuerUserId" TransformationClaimType="key" />
+          <InputClaim ClaimTypeReferenceId="identityProvider" TransformationClaimType="identityProvider" />
+        </InputClaims>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="objectId" TransformationClaimType="alternativeSecurityId" />
+        </OutputClaims>
+      </ClaimsTransformation>
+
+    </ClaimsTransformations>
+
+  </BuildingBlocks>
+
+  <ClaimsProviders>
+
+    <ClaimsProvider>
+      <DisplayName>Facebook</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="Facebook-OAUTH">
+          <Metadata>
+            <Item Key="client_id">facebook_clientid</Item>
+            <Item Key="scope">email public_profile</Item>
+            <Item Key="ClaimsEndpoint">https://graph.facebook.com/me?fields=id,first_name,last_name,name,email</Item>
+          </Metadata>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+    <ClaimsProvider>
+      <DisplayName>B2C Utilities</DisplayName>
+      <TechnicalProfiles>
+        <TechnicalProfile Id="B2CUtil-CreateObjectId">
+          <DisplayName>B2C Utility to Create ObjectId Claim</DisplayName>
+          <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+          <OutputClaims>
+            <OutputClaim ClaimTypeReferenceId="objectId" DefaultValue="unknown" />
+          </OutputClaims>
+          <OutputClaimsTransformations>
+            <OutputClaimsTransformation ReferenceId="CreateObjectId" />
+          </OutputClaimsTransformations>
+        </TechnicalProfile>
+      </TechnicalProfiles>
+    </ClaimsProvider>
+
+  </ClaimsProviders>
+
+	<UserJourneys>
+
+    <UserJourney Id="SignInOnly">
+
+      <OrchestrationSteps>
+
+        <OrchestrationStep Order="1" Type="ClaimsProviderSelection" ContentDefinitionReferenceId="api.idpselections">
+          <ClaimsProviderSelections>
+            <ClaimsProviderSelection TargetClaimsExchangeId="FacebookExchange" />
+          </ClaimsProviderSelections>
+        </OrchestrationStep>
+
+        <OrchestrationStep Order="2" Type="ClaimsExchange">
+          <ClaimsExchanges>
+            <ClaimsExchange Id="FacebookExchange" TechnicalProfileReferenceId="Facebook-OAUTH" />
+          </ClaimsExchanges>
+        </OrchestrationStep>
+
+        <OrchestrationStep Order="3" Type="ClaimsExchange">
+          <ClaimsExchanges>
+            <ClaimsExchange Id="SignInOnlyExchange" TechnicalProfileReferenceId="B2CUtil-CreateObjectId" />
+          </ClaimsExchanges>
+        </OrchestrationStep>
+        
+        <OrchestrationStep Order="4" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+
+      </OrchestrationSteps>
+
+      <ClientDefinition ReferenceId="DefaultWeb" />
+
+    </UserJourney>
+	
+	</UserJourneys>
+
+</TrustFrameworkPolicy>
