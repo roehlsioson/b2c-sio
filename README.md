@@ -4,10 +4,25 @@ Azure Active Directory B2C (Azure AD B2C) provides business-to-customer identity
 
 In this scenario, we enrich the user's token data by integrating with a corporate line-of-business workflow. During sign-up or sign-in with local or federated account, Azure AD B2C invokes a REST API to get the user's extended profile data from a remote data source. In this sample, Azure AD B2C sends the user's unique identifier, the objectId. The REST API then returns the user's account balance (a random number). Use this sample as a starting point to integrate with your own CRM system, marketing database, or any line-of-business workflow.
 
+This walkthrough uses Facebook as an example claims provider, but can be adapted to work with any claims provider.
+
 ## Prerequisites
 
 - Complete the steps in [Get started with custom policies](custom-policy-get-started.md). You should have a working custom policy for sign-up and sign-in with local accounts.
 - Learn how to [Integrate REST API claims exchanges in your Azure AD B2C custom policy](custom-policy-rest-api-intro.md).
+
+## Prepare your environment
+
+Ensure that you have a working set of policy files, including a claims provider and relying party.
+
+1. Sign in to the [Azure portal](https://portal.azure.com).
+1. Make sure you're using the directory that contains your Azure AD tenant by selecting the **Directory + subscription** filter in the top menu and choosing the directory that contains your Azure AD tenant.
+1. Choose **All services** in the top-left corner of the Azure portal, and then search for and select **App registrations**.
+1. Select **Identity Experience Framework**.
+1. Select the existing sign-in policy and click the **Run now** button.
+1. Verify that you can sign-in using an external IdP.
+1. When sign-in is complete, verify that the user you signed in with now exists as an entity in the B2C directory by selecting **Users** under the **Manage** menu of **Identity Experience Framework**.
+1. Backup your original policy files *TrustFrameworkExtensions.xml* and *SignUpOrSignIn.xml*.
 
 ## Add a claims transformation
 
@@ -54,6 +69,47 @@ The following is an example using the **Facebook-OAUTH** technical profile.
 </ClaimsProvider>
 ```
 
+As an alternative, you can create a separate technical profile to preserve your original technical profile. The following is an example for Facebook. The **TechnicalProfile** **Id** is different than the original **Facebook-OAUTH** value.
+
+```xml
+<ClaimsProvider>
+  <Domain>facebook.com</Domain>
+  <DisplayName>Facebook</DisplayName>
+  <TechnicalProfiles>
+    <TechnicalProfile Id="Facebook-OAUTH-sift">
+      <DisplayName>Facebook</DisplayName>
+      <Protocol Name="OAuth2" />
+      <Metadata>
+        <Item Key="ProviderName">facebook</Item>
+        <Item Key="authorization_endpoint">https://www.facebook.com/dialog/oauth</Item>
+        <Item Key="AccessTokenEndpoint">https://graph.facebook.com/oauth/access_token</Item>
+        <Item Key="HttpBinding">GET</Item>
+        <Item Key="UsePolicyInRedirectUri">0</Item>
+        <Item Key="AccessTokenResponseFormat">json</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="client_secret" StorageReferenceId="B2C_1A_FacebookSecret" />
+      </CryptographicKeys>
+      <InputClaims />
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="id" />
+        <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="first_name" />
+        <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="last_name" />
+        <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
+        <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="facebook.com" AlwaysUseDefaultValue="true" />
+        <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" AlwaysUseDefaultValue="true" />
+      </OutputClaims>
+      <OutputClaimsTransformations>
+        <OutputClaimsTransformation ReferenceId="CreateObjectId" />
+        <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId" />
+      </OutputClaimsTransformations>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
+    </TechnicalProfile>
+  </TechnicalProfiles>
+</ClaimsProvider>
+```
+
 Note that any technical profiles referenced by the claims provider might be reading or writing to AAD. To create the sign-in flow through experience, these operations must be avoided. Assess your need for these operations and ensure that they are addressed (removed or provided for in another way).
 
 ## Add a new user journey
@@ -92,6 +148,28 @@ Edit your relying party XML file, changing the **ReferenceId** of **DefaultUserJ
 
 ```xml
 <DefaultUserJourney ReferenceId="SignInFlowThrough" />
+```
+
+The following is an example of a relying party policy using the **SignInFlowThrough** user journey.
+
+```xml
+<RelyingParty>
+  <DefaultUserJourney ReferenceId="SignInFlowThrough" />
+  <TechnicalProfile Id="PolicyProfile">
+    <DisplayName>PolicyProfile</DisplayName>
+    <Protocol Name="OpenIdConnect" />
+    <OutputClaims>
+      <OutputClaim ClaimTypeReferenceId="displayName" />
+      <OutputClaim ClaimTypeReferenceId="givenName" />
+      <OutputClaim ClaimTypeReferenceId="surname" />
+      <OutputClaim ClaimTypeReferenceId="email" />
+      <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub"/>
+      <OutputClaim ClaimTypeReferenceId="identityProvider" />
+      <OutputClaim ClaimTypeReferenceId="tenantId" AlwaysUseDefaultValue="true" DefaultValue="{Policy:TenantObjectId}" />
+    </OutputClaims>
+    <SubjectNamingInfo ClaimType="sub" />
+  </TechnicalProfile>
+</RelyingParty>
 ```
 
 ## Test the custom policy
