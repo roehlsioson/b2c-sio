@@ -1,11 +1,14 @@
 # Walkthrough: Add a sign-in-only custom policy in Azure Active Directory B2C
 
-Active Directory Federation Services (ADFS) is an on-premise solution for providing identity federation across 
-Need to pull authorization data?
+Active Directory Federation Services (ADFS) is an on-premise solution for enterprise identity federation, allowing you to permit the use of identities from multiple identity providers for multiple relying parties. ADFS also enables you to transform and augment claims, enforce service authorization, and integrates directly with Active Directory to provide an out-of-the-box identity provider with multi-factor authentication options.
 
-In this scenario, all identity information is collected from the identity provider and passed on to the relying party without the need for the user to sign-up. As a result, Azure AD B2C does not persist any user information locally in its own directory.  While this eliminates the need to manage any local identities, it also prevents you from leveraging any identity governance capabilities of Azure AD B2C, meaning that identity governance must be implemented at the identity providers and/or the relying parties, all of which should be negotiated in advance of your implementation.
+Azure Active Directory B2B and B2C both build on the ADFS experience by easily federating with other Azure Active Directory instances, as well as popular social identity providers such as Google and Facebook. More significantly, Azure AD B2B and B2C provide many identity governance mechanisms that help you stay compliant with legal and regulatory requirements.
 
-In this sample, Azure AD B2C is federated with the Facebook identity provider. When a user signs in, Facebook claims are transformed into B2C claims, which are then sent to the relying party, all without the creation of a user identity in the B2C directory. While Facebook is used in the example, the policy can be adapted to work with any claims provider.
+Azure AD B2B and B2C each require a shadow account for each user in their respective directories in order to fulfill the identity governance functions. Conversely, ADFS does not provide the identity governance functions, and does not need such shadow accounts. In all cases, a pre-configured technical trust needs to be established. But in terms of the default user experience, a B2B or B2C user needs to "sign-up" in order to successfully get access to services. ADFS on the other hand, does not force a "sign-up".
+
+In this Azure AD B2C scenario, identity information is collected from the identity provider and passed on to the relying party without the need for the user to sign-up. As a result, Azure AD B2C does not persist any user information locally in its own directory, similar to ADFS.  While this eliminates the need to manage any local identities, it also prevents you from leveraging any identity governance capabilities of Azure AD B2C, meaning that identity governance must be implemented at the identity providers and/or the relying parties, all of which should be negotiated in advance of your implementation. Because data flows through your Azure AD B2C instance, you may be held accountable for any breaches or identity issues.
+
+This sample federates Azure AD B2C with the Facebook identity provider. When a user signs in, Facebook claims are transformed into B2C claims, which are then sent to the relying party, all without the creation of a user identity in the B2C directory. While Facebook is used in the example, this policy can be adapted to work with any claims provider.
 
 ## Prerequisites
 
