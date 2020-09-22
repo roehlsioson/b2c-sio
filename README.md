@@ -48,80 +48,40 @@ In this example, the CreateAlternativeSecurityId claims transformation is used t
 </ClaimsTransformation>
 ```
 
-## Modify your claims provider
+## Create a claims transformation claims provider
 
-Update the claims provider to ensure that the new ObjectId is created. Include the following **OutputClaimsTransformations** in the relevant technical profile of your chosen claims provider.
+If you already have a generalized utility claims provider for claims transformation, include the following **OutputClaimsTransformation** in the relevant technical profile of that claims provider. This will provide the ability to trigger the **CreateObjectId** claims transformation. 
 
 ```xml
-<OutputClaimsTransformations>
-  <OutputClaimsTransformation ReferenceId="CreateObjectId" />
-</OutputClaimsTransformations>
+<OutputClaimsTransformation ReferenceId="CreateObjectId" />
 ```
 
-The following is an example using the **Facebook-OAUTH** technical profile.
+If you don't already have a utility claims provider, make one using the following declaration.
 
 ```xml
 <ClaimsProvider>
-  <DisplayName>Facebook</DisplayName>
+  <DisplayName>B2C Utilities</DisplayName>
   <TechnicalProfiles>
-    <TechnicalProfile Id="Facebook-OAUTH">
-      <OutputClaimsTransformations>
-        <OutputClaimsTransformation ReferenceId="CreateObjectId" />
-      </OutputClaimsTransformations>
-    </TechnicalProfile>
-  </TechnicalProfiles>
-</ClaimsProvider>
-```
-
-As an alternative, you can create a separate technical profile to preserve your original technical profile. The following is an example for Facebook. The **TechnicalProfile** **Id** is different than the original **Facebook-OAUTH** value.
-
-```xml
-<ClaimsProvider>
-  <Domain>facebook.com</Domain>
-  <DisplayName>Facebook</DisplayName>
-  <TechnicalProfiles>
-    <TechnicalProfile Id="Facebook-OAUTH-sift">
-      <DisplayName>Facebook</DisplayName>
-      <Protocol Name="OAuth2" />
-      <Metadata>
-        <Item Key="ProviderName">facebook</Item>
-        <Item Key="authorization_endpoint">https://www.facebook.com/dialog/oauth</Item>
-        <Item Key="AccessTokenEndpoint">https://graph.facebook.com/oauth/access_token</Item>
-        <Item Key="HttpBinding">GET</Item>
-        <Item Key="UsePolicyInRedirectUri">0</Item>
-        <Item Key="AccessTokenResponseFormat">json</Item>
-      </Metadata>
-      <CryptographicKeys>
-        <Key Id="client_secret" StorageReferenceId="B2C_1A_FacebookSecret" />
-      </CryptographicKeys>
-      <InputClaims />
+    <TechnicalProfile Id="B2CUtil-CreateObjectId">
+      <DisplayName>B2C Utility to Create ObjectId Claim</DisplayName>
+      <Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
       <OutputClaims>
-        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="id" />
-        <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="first_name" />
-        <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="last_name" />
-        <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
-        <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
-        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="facebook.com" AlwaysUseDefaultValue="true" />
-        <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" AlwaysUseDefaultValue="true" />
+        <OutputClaim ClaimTypeReferenceId="objectId" DefaultValue="unknown" />
       </OutputClaims>
       <OutputClaimsTransformations>
         <OutputClaimsTransformation ReferenceId="CreateObjectId" />
-        <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId" />
       </OutputClaimsTransformations>
-      <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
     </TechnicalProfile>
   </TechnicalProfiles>
 </ClaimsProvider>
 ```
 
-Note that any technical profiles referenced by the claims provider might be reading or writing to AAD. To create the sign-in flow through experience, these operations must be avoided. Assess your need for these operations and ensure that they are addressed (removed or provided for in another way).
-
 ## Add a new user journey
 
-The default user journey reads and writes to AAD, pulling data and creating user accounts in the directory. Create a new user journey that uses the modified technical profile (using the **Facebook-OAUTH** technical profile in the example below) and does not refer to any AAD operations.
+The default user journey reads and writes to AAD, pulling data and creating user accounts in the directory. Create a new **SignInOnly** user journey that uses the **B2CUtil-CreateObjectId** technical profile. This example uses Facebook as the identity provider, but any number of claim providers can be configured for step 1 and step 2.
 
 ```xml
-<UserJourney Id="SignInFlowThrough">
+<UserJourney Id="SignInOnly">
 
   <OrchestrationSteps>
 
@@ -137,7 +97,13 @@ The default user journey reads and writes to AAD, pulling data and creating user
       </ClaimsExchanges>
     </OrchestrationStep>
 
-    <OrchestrationStep Order="3" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+    <OrchestrationStep Order="3" Type="ClaimsExchange">
+      <ClaimsExchanges>
+      <ClaimsExchange Id="SignInFlowThroughExchange" TechnicalProfileReferenceId="B2CUtility-CreateObjectId" />
+      </ClaimsExchanges>
+    </OrchestrationStep>
+    
+    <OrchestrationStep Order="4" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
 
   </OrchestrationSteps>
 
@@ -148,17 +114,17 @@ The default user journey reads and writes to AAD, pulling data and creating user
 
 ## Modify your relying party policy
 
-Edit your relying party XML file, changing the **ReferenceId** of **DefaultUserJourney** to **SignInFlowThrough**, which is the name of the new user journey created in the previous step.
+Edit your relying party XML file, changing the **ReferenceId** of **DefaultUserJourney** to **SignInOnly**, which is the name of the new user journey created in the previous step.
 
 ```xml
-<DefaultUserJourney ReferenceId="SignInFlowThrough" />
+<DefaultUserJourney ReferenceId="SignInOnly" />
 ```
 
 The following is an example of a relying party policy using the **SignInFlowThrough** user journey.
 
 ```xml
 <RelyingParty>
-  <DefaultUserJourney ReferenceId="SignInFlowThrough" />
+  <DefaultUserJourney ReferenceId="SignInOnly" />
   <TechnicalProfile Id="PolicyProfile">
     <DisplayName>PolicyProfile</DisplayName>
     <Protocol Name="OpenIdConnect" />
