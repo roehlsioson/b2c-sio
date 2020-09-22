@@ -30,6 +30,7 @@ You should have a working custom policy for sign-up and sign-in with non-local a
 1. Select the existing sign-up (or sign-up/sign-in) policy and click the **Run now** button.
 1. Verify that you can sign-in using an external IdP. If you have not previously signed-up, B2C will tell you that you need to sign-up before you can sign-in.
 1. When sign-in is complete, verify that the user you signed in with now exists as an entity in the B2C directory by selecting **Users** under the **Manage** menu of **Identity Experience Framework**.
+1. Delete this account from the B2C directory for future testing.
 
 ## Add a claims transformation
 
